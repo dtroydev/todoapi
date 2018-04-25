@@ -1,51 +1,25 @@
 'use strict';
 
-// console.log(Object.keys(global));
-// console.log(global);
+const express = require('express');
 
-// console.log(global.process.versions);
-const mongoose = require('mongoose');
+require('./db/mongoose');
+const { Todo } = require('./models/todo');
+// const { User } = require('./models/user');
 
-// mongoose.Promise = global.Promise;
+const app = express();
+app.use(express.json());
 
-mongoose.connect('mongodb://localhost:27017/TodoApp');
-
-const todoSchema = mongoose.Schema({
-  text: {
-    type: String,
-    required: true,
-    trim: true,
-    minlength: 1,
-  },
-  completed: {
-    type: Boolean,
-    default: false,
-  },
-  completedAt: {
-    type: Number,
-    default: null,
-  },
+app.post('/todos', (req, res) => {
+  const todo = new Todo({ text: req.body.text });
+  todo.save().then(doc => res.send(doc), err => res.status(400).send(err));
+  // res.end();
 });
 
-const userSchema = mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-    minlength: 1,
-  },
-});
+app.listen(3000, () => console.log('Express up on 3000'));
 
-const Todo = mongoose.model('Todo', todoSchema);
-const User = mongoose.model('User', userSchema);
-
-// save new something
-const todo = new Todo({ text: 'a', completed: true, completedAt: Math.floor(Date.now() / 1000) });
-const user = new User({ email: 'abc@example.org' });
-
-// user.save().then(console.log, console.log);
-
-// Promise.all([todo.save(), user.save().catch(x => new Promise((_, reject) => setTimeout(() => reject(x), 5000)))])
-Promise.all([todo.save(), user.save()])
-  .then(console.log, console.log)
-  .then(() => mongoose.connection.close());
+// const todo = new Todo({ text: 'a', completed: true, completedAt: Math.floor(Date.now() / 1000) });
+// const user = new User({ email: 'abc@example.org' });
+//
+// Promise.all([todo.save(), user.save()])
+//   .then(console.log, console.log)
+//   .then(() => mongoose.connection.close());
