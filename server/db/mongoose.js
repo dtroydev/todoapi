@@ -1,5 +1,6 @@
 'use strict';
 
+const debug = require('debug')('mongodb');
 const mongoose = require('mongoose');
 
 mongoose.connect('mongodb://localhost:27017/TodoApp', { reconnectTries: 0 })
@@ -8,11 +9,12 @@ mongoose.connect('mongodb://localhost:27017/TodoApp', { reconnectTries: 0 })
 const db = mongoose.connection;
 
 db.on('disconnected', () => {
-  console.log('MongoDB Server has Disconnected');
+  debug('MongoDB Server has Disconnected');
 });
 
 db.on('connected', () => {
-  console.log('MongoDB Server has Connected');
+  debug('MongoDB Server has Connected');
 });
 
 exports.mongoose = mongoose;
+exports.db = db;
