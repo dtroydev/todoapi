@@ -11,10 +11,12 @@ const app = express();
 app.use(express.json());
 
 app.post('/todos', (req, res) => {
-  // console.log(`received: ${JSON.stringify(req.body)}`);
   const todo = new Todo({ text: req.body.text });
   todo.save().then(doc => res.send(doc), err => res.status(400).send(err));
-  // res.end();
+});
+
+app.get('/todos', (req, res) => {
+  Todo.find().then(todos => res.send({ todos }), err => res.status(400).send(err));
 });
 
 const server = app.listen(3000, () => {

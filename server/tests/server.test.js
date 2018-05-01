@@ -27,6 +27,7 @@ describe('Test Suite: POST /todos', () => {
         else {
           Todo.find()
             .then((todos) => {
+              // console.log(todos);
               expect(todos.length).toBe(1);
               expect(todos[0].text).toBe(text);
               done();
