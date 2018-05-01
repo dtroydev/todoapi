@@ -7,9 +7,18 @@ const { app, server } = require('../server');
 const { Todo } = require('../models/todo');
 const { db } = require('../db/mongoose');
 
-// delete existing todos before testing
+// test data
+const testTodos = [
+  { text: 'test todo #1' },
+  { text: 'test todo #2' },
+];
+
+// populate with test data
 beforeEach((done) => {
-  Todo.deleteMany().then(() => done(), done);
+  Todo.deleteMany()
+    .then(() => Todo.insertMany(testTodos))
+    .then(() => done())
+    .catch(done);
 });
 
 describe('Test Suite: POST /todos', () => {
@@ -25,7 +34,7 @@ describe('Test Suite: POST /todos', () => {
       .end((err) => {
         if (err) done(err);
         else {
-          Todo.find()
+          Todo.find({ text })
             .then((todos) => {
               // console.log(todos);
               expect(todos.length).toBe(1);
@@ -47,11 +56,26 @@ describe('Test Suite: POST /todos', () => {
         else {
           Todo.find()
             .then((todos) => {
-              expect(todos.length).toBe(0);
+              expect(todos.length).toBe(testTodos.length);
               done();
             })
             .catch(done);
         }
+      });
+  });
+});
+
+describe('Test Suite: GET /todos', () => {
+  it('get all todos', (done) => {
+    request(app)
+      .get('/todos')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todos.length).toBe(testTodos.length);
+      })
+      .end((err) => {
+        if (err) done(err);
+        else done();
       });
   });
 });
