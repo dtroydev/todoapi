@@ -16,5 +16,5 @@ db.on('connected', () => {
   debug('MongoDB Server has Connected');
 });
 
-exports.mongoose = mongoose;
+// exports.mongoose = mongoose;
 exports.db = db;
