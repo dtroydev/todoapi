@@ -41,7 +41,7 @@ app.get('/todos/:id', (req, res) => {
 });
 
 const server = app.listen(port, () => {
-  debug('Express server is up on 3000');
+  debug(`Express server is up on ${port}`);
 });
 
 exports.app = app;

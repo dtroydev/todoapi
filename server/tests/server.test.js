@@ -15,6 +15,11 @@ const testTodos = [
   { _id: new ObjectID(), text: 'test todo #2' },
 ];
 
+// wait until connection is ready before testing
+before((done) => {
+  db.on('connected', done);
+});
+
 // populate with test data
 beforeEach((done) => {
   Todo.deleteMany()
@@ -105,6 +110,7 @@ describe('Test Suite: GET /todos/:id', () => {
   });
 });
 
+// close express server and mongo connection
 after(() => {
   server.close(() => debug('Express Server Closed'));
   db.close();

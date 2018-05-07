@@ -2,10 +2,14 @@
   "name": "todo",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
+  "main": "server/server.js",
   "scripts": {
+    "start": "node server/server.js",
     "test": "mocha server/*/*.test.js",
     "test-watch": "nodemon --exec 'npm t'"
+  },
+  "engines":{
+    "node": "8.9.4"
   },
   "keywords": [],
   "author": "",
