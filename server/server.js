@@ -3,20 +3,39 @@
 const express = require('express');
 const debug = require('debug')('express');
 
-require('./db/mongoose');
+const { ObjectID } = require('./db/mongoose');
 const { Todo } = require('./models/todo');
 // const { User } = require('./models/user');
 
 const app = express();
 app.use(express.json());
 
+// todo addition
 app.post('/todos', (req, res) => {
+  debug(`Received ${req.method}`, req.url, req.body);
   const todo = new Todo({ text: req.body.text });
   todo.save().then(doc => res.send(doc), err => res.status(400).send(err));
 });
 
+// all todos listing
 app.get('/todos', (req, res) => {
-  Todo.find().then(todos => res.send({ todos }), err => res.status(400).send(err));
+  debug(`Received ${req.method}`, req.url);
+  Todo.find().then(todo => res.send({ todo }), err => res.status(400).send(err));
+});
+
+// single todo listing
+app.get('/todos/:id', (req, res) => {
+  debug(`Received ${req.method}`, req.url);
+
+  const { id } = req.params;
+
+  if (!ObjectID.isValid(id)) return res.status(404).send();
+
+  return Todo.findById(id).then((todo) => {
+    if (!todo) return res.status(404).send();
+    return res.send(todo);
+  })
+    .catch(() => res.status(400).send());
 });
 
 const server = app.listen(3000, () => {
