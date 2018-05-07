@@ -20,7 +20,7 @@ app.post('/todos', (req, res) => {
 // all todos listing
 app.get('/todos', (req, res) => {
   debug(`Received ${req.method}`, req.url);
-  Todo.find().then(todo => res.send({ todo }), err => res.status(400).send(err));
+  Todo.find().then(todos => res.send({ todos }), err => res.status(400).send(err));
 });
 
 // single todo listing
@@ -33,7 +33,7 @@ app.get('/todos/:id', (req, res) => {
 
   return Todo.findById(id).then((todo) => {
     if (!todo) return res.status(404).send();
-    return res.send(todo);
+    return res.send({ todo });
   })
     .catch(() => res.status(400).send());
 });

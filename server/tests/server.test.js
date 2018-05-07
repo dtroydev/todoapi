@@ -1,3 +1,5 @@
+/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
+
 'use strict';
 
 const request = require('supertest');
@@ -5,12 +7,12 @@ const expect = require('expect');
 const debug = require('debug')('express');
 const { app, server } = require('../server');
 const { Todo } = require('../models/todo');
-const { db } = require('../db/mongoose');
+const { ObjectID, db } = require('../db/mongoose');
 
 // test data
 const testTodos = [
-  { text: 'test todo #1' },
-  { text: 'test todo #2' },
+  { _id: new ObjectID(), text: 'test todo #1' },
+  { _id: new ObjectID(), text: 'test todo #2' },
 ];
 
 // populate with test data
@@ -66,17 +68,40 @@ describe('Test Suite: POST /todos', () => {
 });
 
 describe('Test Suite: GET /todos', () => {
-  it('get all todos', (done) => {
+  it('should return all todos', (done) => {
     request(app)
       .get('/todos')
       .expect(200)
+      .expect(res => expect(res.body.todos.length).toBe(testTodos.length))
+      .end(done);
+  });
+});
+
+describe('Test Suite: GET /todos/:id', () => {
+  it('should return a single todo', (done) => {
+    const { _id, text } = testTodos[0];
+    request(app)
+      .get(`/todos/${_id}`)
+      .expect(200)
       .expect((res) => {
-        expect(res.body.todos.length).toBe(testTodos.length);
+        expect(res.body.todo._id).toBe(`${_id}`);
+        expect(res.body.todo.text).toBe(text);
       })
-      .end((err) => {
-        if (err) done(err);
-        else done();
-      });
+      .end(done);
+  });
+
+  it('should return 404 if todo id is not found', (done) => {
+    request(app)
+      .get(`/todos/${ObjectID()}`)
+      .expect(404)
+      .end(done);
+  });
+
+  it('should return 404 if todo id is invalid', (done) => {
+    request(app)
+      .get('/todos/123}')
+      .expect(404)
+      .end(done);
   });
 });
 
