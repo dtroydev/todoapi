@@ -8,6 +8,8 @@ const { Todo } = require('./models/todo');
 // const { User } = require('./models/user');
 
 const app = express();
+const port = process.env.PORT || 3000;
+
 app.use(express.json());
 
 // todo addition
@@ -38,7 +40,7 @@ app.get('/todos/:id', (req, res) => {
     .catch(() => res.status(400).send());
 });
 
-const server = app.listen(3000, () => {
+const server = app.listen(port, () => {
   debug('Express server is up on 3000');
 });
 
