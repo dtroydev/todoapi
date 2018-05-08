@@ -41,6 +41,7 @@ app.get('/todos/:id', (req, res) => {
 });
 
 // delete route
+// yeah!
 app.delete('/todos/:id', (req, res) => {
   debug(`Received ${req.method}`, req.url);
 
