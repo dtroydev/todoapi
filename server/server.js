@@ -40,6 +40,7 @@ app.get('/todos/:id', (req, res) => {
     .catch(() => res.status(400).send());
 });
 
+// delete route
 app.delete('/todos/:id', (req, res) => {
   debug(`Received ${req.method}`, req.url);
 
