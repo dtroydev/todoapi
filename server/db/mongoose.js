@@ -9,7 +9,7 @@ const localMongoUri = 'mongodb://localhost:27017/TodoApp';
 const mongoUri = process.env.MONGOLAB_URI || localMongoUri;
 
 mongoose.connect(mongoUri, { reconnectTries: 0 })
-  .catch(err => console.log(err.message));
+  .catch(({ message }) => console.log(message));
 
 const db = mongoose.connection;
 
