@@ -11,8 +11,8 @@ const { ObjectID, db } = require('../db/mongoose');
 
 // test data
 const testTodos = [
-  { _id: new ObjectID(), text: 'test todo #1' },
-  { _id: new ObjectID(), text: 'test todo #2' },
+  { _id: new ObjectID(), text: 'mocha testing todo #1' },
+  { _id: new ObjectID(), text: 'mocha testing todo #2' },
 ];
 
 // wait until connection is ready before testing
@@ -30,7 +30,7 @@ beforeEach((done) => {
 
 describe('Test Suite: POST /todos', () => {
   it('should create a new todo', (done) => {
-    const text = 'lorem ipsum mofo';
+    const text = 'lorem ipsum blah blah';
     request(app)
       .post('/todos')
       .send({ text })
@@ -104,7 +104,44 @@ describe('Test Suite: GET /todos/:id', () => {
 
   it('should return 404 if todo id is invalid', (done) => {
     request(app)
-      .get('/todos/123}')
+      .get('/todos/123')
+      .expect(404)
+      .end(done);
+  });
+});
+
+describe('Test Suite: DELETE /todos/:id', () => {
+  it('should delete a single todo', (done) => {
+    const { _id, text } = testTodos[0];
+    request(app)
+      .delete(`/todos/${_id}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo._id).toBe(`${_id}`);
+        expect(res.body.todo.text).toBe(text);
+      })
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(_id).then((todo) => {
+            expect(todo).toBeNull();
+            done();
+          })
+            .catch(done);
+        }
+      });
+  });
+
+  it('should return 404 if todo id is not found', (done) => {
+    request(app)
+      .delete(`/todos/${ObjectID()}`)
+      .expect(404)
+      .end(done);
+  });
+
+  it('should return 404 if todo id is invalid', (done) => {
+    request(app)
+      .delete('/todos/123')
       .expect(404)
       .end(done);
   });

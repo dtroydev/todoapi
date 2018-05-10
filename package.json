@@ -6,9 +6,11 @@
   "scripts": {
     "start": "node server/server.js",
     "test": "mocha server/*/*.test.js",
-    "test-watch": "nodemon --exec 'npm t'"
+    "test-watch": "nodemon --exec 'npm t'",
+    "coverage": "istanbul cover _mocha server/tests/server.test.js",
+    "viewcoverage": "open coverage/lcov-report/index.html"
   },
-  "engines":{
+  "engines": {
     "node": "8.9.4",
     "npm": "6.0.0"
   },
@@ -23,6 +25,7 @@
     "mongoose": "^5.0.14"
   },
   "devDependencies": {
+    "istanbul": "^0.4.5",
     "supertest": "^3.0.0"
   }
 }
