@@ -1,4 +1,8 @@
+/* eslint no-unused-vars: ["error", { "argsIgnorePattern": "^_" }] */
+
 'use strict';
+
+require('colors');
 
 const express = require('express');
 const debug = require('debug')('express');
@@ -11,6 +15,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// error handling
+app.use((err, _req, res, _next) => {
+  debug(`Error: ${err.message}, sending ${err.status || 500} status code`.red);
+  res.status(err.status || 500).send();
+});
 
 // todo addition
 app.post('/todos', (req, res) => {
@@ -52,7 +62,40 @@ app.delete('/todos/:id', (req, res) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
-    .catch(() => res.status(400).send());
+    .catch((_err) => {
+      // debug(`Error: ${err.message}, delete failed`.red);
+      res.status(400).send();
+    });
+});
+
+// update route
+app.patch('/todos/:id', (req, res) => {
+  debug(`Received ${req.method}`, req.url, req.body);
+
+  // check id validity
+  const { id } = req.params;
+  if (!ObjectID.isValid(id)) return res.status(404).send();
+
+  // validation
+  const accepted = ['text', 'completed'];
+  const type = k => Todo.schema.path(k).instance.toLowerCase();
+  const invalid = k => (!accepted.includes(k) || (typeof req.body[k]).toString() !== type(k));
+  const keys = Object.keys(req.body);
+  if (keys.some(invalid) || keys.length === 0) return res.status(400).send();
+
+  // completedAt Handling
+  const { completed } = req.body;
+  if (completed === true) req.body.completedAt = Date.now();
+  if (completed === false) req.body.completedAt = null;
+
+  return Todo.findByIdAndUpdate(id, req.body).then((todo) => {
+    if (!todo) return res.status(404).send();
+    return res.send({ todo });
+  })
+    .catch((err) => {
+      debug(`Error: ${err.message}, update failed`.red);
+      res.status(400).send();
+    });
 });
 
 const server = app.listen(port, () => {

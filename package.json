@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "colors": "^1.2.4",
     "debug": "^3.1.0",
     "expect": "^22.4.3",
     "express": "^4.16.3",

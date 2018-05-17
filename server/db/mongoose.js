@@ -21,4 +21,8 @@ db.on('connected', () => {
   debug('MongoDB Server has Connected to', db.host);
 });
 
+db.on('error', (err) => {
+  debug('MongoDB Server has an Error', err);
+});
+
 exports.db = db;
