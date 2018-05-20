@@ -14,15 +14,15 @@ mongoose.connect(mongoUri, { reconnectTries: 0 })
 const db = mongoose.connection;
 
 db.on('disconnected', () => {
-  debug('MongoDB Server has Disconnected');
+  debug('Mongoose has been Disconnected');
 });
 
 db.on('connected', () => {
-  debug('MongoDB Server has Connected to', db.host);
+  debug('Mongoose has Connected to', db.host);
 });
 
 db.on('error', (err) => {
-  debug('MongoDB Server has an Error', err);
+  debug('Mongoose has an Error', err);
 });
 
 exports.db = db;
