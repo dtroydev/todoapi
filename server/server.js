@@ -16,23 +16,32 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// error handling
-app.use((err, _req, res, _next) => {
-  debug(`Error: ${err.message}, sending ${err.status || 500} status code`.red);
-  res.status(err.status || 500).send();
-});
+const errors = {
+  expressHandler(err, _req, res, _next) {
+    debug(`Error: ${err.message}, sending ${err.status || 500} status code`.red);
+    res.status(err.status || 500).send();
+  },
+  mongoHandler(op, err) {
+    const code = 400;
+    debug(`Error: ${err.message}, mongodb operation ${op} failed, sending ${code} status code`.red);
+    this.status(code).send(err);
+  },
+};
+
+// express error handling middleware
+app.use(errors.expressHandler);
 
 // todo addition
 app.post('/todos', (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
   const todo = new Todo({ text: req.body.text });
-  todo.save().then(doc => res.send(doc), err => res.status(400).send(err));
+  todo.save().then(doc => res.send(doc), errors.mongoHandler.bind(res, 'todo.save'));
 });
 
 // all todos listing
 app.get('/todos', (req, res) => {
   debug(`Received ${req.method}`, req.url);
-  Todo.find().then(todos => res.send({ todos }), err => res.status(400).send(err));
+  Todo.find().then(todos => res.send({ todos }), errors.mongoHandler.bind(res, 'Todo.find()'));
 });
 
 // single todo listing
@@ -47,7 +56,7 @@ app.get('/todos/:id', (req, res) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
-    .catch(() => res.status(400).send());
+    .catch(errors.mongoHandler.bind(res, 'Todo.findById'));
 });
 
 // delete route
@@ -62,10 +71,7 @@ app.delete('/todos/:id', (req, res) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
-    .catch((_err) => {
-      // debug(`Error: ${err.message}, delete failed`.red);
-      res.status(400).send();
-    });
+    .catch(errors.mongoHandler.bind(res, 'Todo.findByIdAndRemove'));
 });
 
 // update route
@@ -94,10 +100,7 @@ app.patch('/todos/:id', (req, res) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
-    .catch((err) => {
-      debug(`Error: ${err.message}, update failed`.red);
-      res.status(400).send();
-    });
+    .catch(errors.mongoHandler.bind(res, 'Todo.findByIdAndUpdate'));
 });
 
 const server = app.listen(port, () => {
@@ -106,3 +109,4 @@ const server = app.listen(port, () => {
 
 exports.app = app;
 exports.server = server;
+exports.errors = errors;

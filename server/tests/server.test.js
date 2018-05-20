@@ -5,7 +5,7 @@
 const request = require('supertest');
 const expect = require('expect');
 const debug = require('debug')('express');
-const { app, server } = require('../server');
+const { app, server, errors } = require('../server');
 const { Todo } = require('../models/todo');
 const { ObjectID, db } = require('../db/mongoose');
 
@@ -26,6 +26,42 @@ beforeEach((done) => {
     .then(() => Todo.insertMany(testTodos))
     .then(() => done())
     .catch(done);
+});
+
+describe('Test Error Handling', () => {
+  it('Expess Middleware should return 500 status code', () => {
+    const req = {};
+    const res = {
+      data: null,
+      code: null,
+      status(status) {
+        this.code = status;
+        return this;
+      },
+      send(payload) {
+        this.data = payload;
+      },
+    };
+    const next = () => {};
+    errors.expressHandler(new Error('Express Error Test'), req, res, next);
+    expect(res.code).toBe(500);
+  });
+  it('Mongo error Handler should return 400 status code', () => {
+    const res = {
+      data: null,
+      code: null,
+      status(status) {
+        this.code = status;
+        return this;
+      },
+      send(payload) {
+        this.data = payload;
+      },
+    };
+    errors.mongoHandler.bind(res, 'Test')(new Error('Mongo Error Test'));
+    expect(res.code).toBe(400);
+    expect(res.data).toBeDefined();
+  });
 });
 
 describe('Test Suite: POST /todos', () => {
@@ -172,6 +208,51 @@ describe('Test Suite: PATCH /todos/:id', () => {
       });
   });
 
+  it('should set completedAt timestamp if complete is true', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text, completed: true })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo._id).toBe(`${_id}`);
+      })
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(_id).then((todo) => {
+            expect(todo.text).toBe(text);
+            expect(todo.completed).toBe(true);
+            const reTimeStamp = /^\d{13}$/;
+            expect(reTimeStamp.test(todo.completedAt)).toBe(true);
+            done();
+          })
+            .catch(done);
+        }
+      });
+  });
+
+  it('should set completedAt timestamp to be null if complete is false', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text, completed: false })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo._id).toBe(`${_id}`);
+      })
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(_id).then((todo) => {
+            expect(todo.text).toBe(text);
+            expect(todo.completed).toBe(false);
+            expect(todo.completedAt).toBeNull();
+            done();
+          })
+            .catch(done);
+        }
+      });
+  });
+
   it('should return 404 if todo id is invalid', (done) => {
     request(app)
       .patch('/todos/123')
@@ -188,7 +269,7 @@ describe('Test Suite: PATCH /todos/:id', () => {
       .end(done);
   });
 
-  it('should return 400 if mismatched field data type is supplied', (done) => {
+  it('should return 400 if field data type mismatch is supplied', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
       .send({ text: 123 })
