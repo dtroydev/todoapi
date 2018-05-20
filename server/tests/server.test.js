@@ -147,6 +147,80 @@ describe('Test Suite: DELETE /todos/:id', () => {
   });
 });
 
+describe('Test Suite: PATCH /todos/:id', () => {
+  const text = 'patched text';
+  const { _id } = testTodos[0];
+
+  it('should update a single todo', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text })
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo._id).toBe(`${_id}`);
+        // expect(res.body.todo.text).toBe(text);
+      })
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(_id).then((todo) => {
+            expect(todo.text).toBe(text);
+            done();
+          })
+            .catch(done);
+        }
+      });
+  });
+
+  it('should return 404 if todo id is invalid', (done) => {
+    request(app)
+      .patch('/todos/123')
+      .send({ text })
+      .expect(404)
+      .end(done);
+  });
+
+  it('should return 404 if todo id is not found', (done) => {
+    request(app)
+      .patch(`/todos/${ObjectID()}`)
+      .send({ text })
+      .expect(404)
+      .end(done);
+  });
+
+  it('should return 400 if mismatched field data type is supplied', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text: 123 })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if non-patch approved field is supplied', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text: 123, completedAt: Date.now() })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if empty todo is supplied', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if unknown todo fields are supplied', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text, random: 'random' })
+      .expect(400)
+      .end(done);
+  });
+});
+
 // close express server and mongo connection
 after(() => {
   server.close(() => debug('Express Server Closed'));

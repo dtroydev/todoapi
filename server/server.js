@@ -76,19 +76,21 @@ app.patch('/todos/:id', (req, res) => {
   const { id } = req.params;
   if (!ObjectID.isValid(id)) return res.status(404).send();
 
+  // shorthand
+  const { body: doc } = req;
+
   // validation
-  const accepted = ['text', 'completed'];
-  const type = k => Todo.schema.path(k).instance.toLowerCase();
-  const invalid = k => (!accepted.includes(k) || (typeof req.body[k]).toString() !== type(k));
-  const keys = Object.keys(req.body);
-  if (keys.some(invalid) || keys.length === 0) return res.status(400).send();
+  const validFields = ['text', 'completed'];
+  const fieldType = f => Todo.schema.path(f).instance.toLowerCase();
+  const testInvalid = f => !validFields.includes(f) || `${typeof doc[f]}` !== fieldType(f);
+  const fields = Object.keys(doc);
+  if (fields.some(testInvalid) || fields.length === 0) return res.status(400).send();
 
-  // completedAt Handling
-  const { completed } = req.body;
-  if (completed === true) req.body.completedAt = Date.now();
-  if (completed === false) req.body.completedAt = null;
+  // completedAt Handling (boolean assured above)
+  if (doc.completed === true) doc.completedAt = Date.now();
+  if (doc.completed === false) doc.completedAt = null;
 
-  return Todo.findByIdAndUpdate(id, req.body).then((todo) => {
+  return Todo.findByIdAndUpdate(id, doc).then((todo) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
