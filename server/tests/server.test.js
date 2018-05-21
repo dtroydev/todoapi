@@ -7,7 +7,7 @@ const expect = require('expect');
 const debug = require('debug')('express');
 const { app, server, errors } = require('../server');
 const { Todo } = require('../models/todo');
-const { ObjectID, db } = require('../db/mongoose');
+const { ObjectID, db, errorsMongoose } = require('../db/mongoose');
 
 // test data
 const testTodos = [
@@ -29,7 +29,7 @@ beforeEach((done) => {
 });
 
 describe('Test Error Handling', () => {
-  it('Expess Middleware should return 500 status code', () => {
+  it('Express Middleware should return 500 status code', () => {
     const req = {};
     const res = {
       data: null,
@@ -46,7 +46,7 @@ describe('Test Error Handling', () => {
     errors.expressHandler(new Error('Express Error Test'), req, res, next);
     expect(res.code).toBe(500);
   });
-  it('Mongo error Handler should return 400 status code', () => {
+  it('Route Mongo error Handler should return 400 status code', () => {
     const res = {
       data: null,
       code: null,
@@ -61,6 +61,12 @@ describe('Test Error Handling', () => {
     errors.mongoHandler.bind(res, 'Test')(new Error('Mongo Error Test'));
     expect(res.code).toBe(400);
     expect(res.data).toBeDefined();
+  });
+
+  it('Mongoose error Handler should return prefix and err message', () => {
+    const prefix = 'Mongoose Error Handler Test';
+    const errorMessage = 'Test Error Message';
+    expect((errorsMongoose(prefix))(new Error(errorMessage))).toBe(`${prefix} ${errorMessage}`);
   });
 });
 

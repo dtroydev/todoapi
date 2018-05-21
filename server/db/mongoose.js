@@ -8,8 +8,13 @@ const localMongoUri = 'mongodb://localhost:27017/TodoApp';
 
 const mongoUri = process.env.MONGOLAB_URI || localMongoUri;
 
+const errorHandler = prefix => (err) => {
+  debug(`${prefix} ${err}`.red);
+  return `${prefix} ${err.message}`;
+};
+
 mongoose.connect(mongoUri, { reconnectTries: 0 })
-  .catch(({ message }) => console.log(message));
+  .catch(errorHandler('mongoose.connect'));
 
 const db = mongoose.connection;
 
@@ -21,8 +26,7 @@ db.on('connected', () => {
   debug('Mongoose has Connected to', db.host);
 });
 
-db.on('error', (err) => {
-  debug('Mongoose has an Error', err);
-});
+db.on('error', errorHandler('db error event'));
 
 exports.db = db;
+exports.errorsMongoose = errorHandler;
