@@ -4,8 +4,11 @@
 
 require('colors');
 
-const express = require('express');
 const debug = require('debug')('express');
+
+require('./config/config');
+
+const express = require('express');
 
 const { ObjectID } = require('./db/mongoose');
 const { Todo } = require('./models/todo');
@@ -110,3 +113,4 @@ const server = app.listen(port, () => {
 exports.app = app;
 exports.server = server;
 exports.errors = errors;
+// exports.env = env;

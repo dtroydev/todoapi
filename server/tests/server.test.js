@@ -28,7 +28,7 @@ beforeEach((done) => {
     .catch(done);
 });
 
-describe('Test Error Handling', () => {
+describe('Test Suite: Error Handlers', () => {
   it('Express Middleware should return 500 status code', () => {
     const req = {};
     const res = {
