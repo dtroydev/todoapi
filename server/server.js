@@ -1,67 +1,24 @@
-/* eslint no-unused-vars: ["error", { "argsIgnorePattern": "^_" }] */
-/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
-
 'use strict';
 
 require('colors');
 
 const debug = require('debug')('express');
 
-const { checkEnv } = require('./config/config');
-
 // check environment, if unrecognised, exit
-checkEnv();
+require('./config/config').checkEnv();
 
 const express = require('express');
-
 const { ObjectID } = require('./db/mongoose');
 const { Todo } = require('./models/todo');
 const { User } = require('./models/user');
+const { authenticate } = require('./middleware/authenticate');
+const { errors } = require('./middleware/errors');
+const { validator } = require('./middleware/validator');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-
-const errors = {
-  expressHandler(err, _req, res, _next) {
-    debug(`Error: ${err.message}, sending ${err.status || 500} status code`.red);
-    res.status(err.status || 500).send();
-  },
-  mongoHandler(op, err) {
-    const code = 400;
-    debug(`Error: ${err.message}, mongodb operation ${op} failed, sending ${code} status code`.red);
-    this.status(code).send(err.message);
-  },
-};
-
-const validator = (req, res, schema, validFields) => {
-  // shorthand
-  const { body: doc } = req;
-
-  // validation - value type mismatches, prohibited/unknown fields, empty objects
-  // top level check - nesting not supported
-  const testInvalid = (f) => {
-    // if not in approved list then invalidate
-    if (!validFields.includes(f)) return true;
-
-    // get supplied type
-    // match something in => [object something]
-    const objTypeRe = /\w+(?=])/;
-    const docType = Object.prototype.toString.call(doc[f]).match(objTypeRe)[0];
-
-    // get correct type
-    const fieldType = schema.path(f).instance;
-
-    // check if identical
-    return docType !== fieldType;
-  };
-
-  const fields = Object.keys(doc);
-
-  // returns true if valid
-  return !(fields.some(testInvalid) || fields.length === 0);
-};
 
 // express error handling middleware
 app.use(errors.expressHandler);
@@ -146,11 +103,17 @@ app.post('/users', (req, res) => {
   }, errors.mongoHandler.bind(res, 'user.save'));
 });
 
+// get me Route
+app.get('/users/me', authenticate, (req, res) => {
+  debug(`Received ${req.method}`, req.url, req.body);
+
+  res.send(res.locals.user);
+});
+
 const server = app.listen(port, () => {
   debug(`Express server is up on ${port}`);
 });
 
 exports.app = app;
 exports.server = server;
-exports.errors = errors;
 // exports.env = env;

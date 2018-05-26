@@ -5,7 +5,8 @@
 const request = require('supertest');
 const expect = require('expect');
 const debug = require('debug')('express');
-const { app, server, errors } = require('../server');
+const { app, server } = require('../server');
+const { errors } = require('../middleware/errors');
 const { Todo } = require('../models/todo');
 const { ObjectID, db, errorsMongoose } = require('../db/mongoose');
 

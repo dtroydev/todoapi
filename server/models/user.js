@@ -1,4 +1,5 @@
 /* eslint func-names: ["error", "never"] */
+/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
 
 'use strict';
 
@@ -55,6 +56,24 @@ userSchema.methods.addJWT = function () {
 userSchema.methods.toJSON = function () {
   const { _id, email } = this;
   return { _id, email };
+};
+
+userSchema.statics.findByToken = function (token) {
+  const access = 'auth';
+
+  // verify jwt
+  return jwt.verify(token, jwtSecret, (err, decoded) => {
+    if (err) {
+      const cErr = err; // to avoid param reassign eslint warning
+      cErr.message = `jtw.verify: ${cErr.message}`;
+      return Promise.reject(cErr);
+    }
+    // lookup user in db via id, token and access in jwt payload
+    return this.findOne({
+      _id: decoded._id,
+      tokens: { $elemMatch: { token, access } },
+    });
+  });
 };
 
 exports.User = mongoose.model('User', userSchema);
