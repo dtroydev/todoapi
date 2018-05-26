@@ -15,11 +15,11 @@ mongoose.connect(process.env.MONGOURI, { reconnectTries: 0 })
 const db = mongoose.connection;
 
 db.on('disconnected', () => {
-  debug('Mongoose has been Disconnected');
+  debug('Mongoose has been Disconnected from DB server');
 });
 
 db.on('connected', () => {
-  debug('Mongoose has Connected to', db.host);
+  debug('Mongoose has Connected to DB server:', db.host);
 });
 
 db.on('error', errorHandler('db error event'));
