@@ -4,6 +4,7 @@ require('colors');
 
 const env = process.env.NODE_ENV || 'development';
 const jwtSecret = 'abc123';
+const genSaltRounds = 10;
 
 console.log(`  Env: ${env}`.yellow);
 
@@ -28,3 +29,4 @@ const checkEnv = () => {
 
 exports.checkEnv = checkEnv;
 exports.jwtSecret = jwtSecret;
+exports.genSaltRounds = genSaltRounds;

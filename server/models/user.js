@@ -6,7 +6,9 @@
 const mongoose = require('mongoose');
 const { isEmail } = require('validator');
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../config/config');
+const bcrypt = require('bcryptjs');
+const { promisify } = require('util');
+const { jwtSecret, genSaltRounds } = require('../config/config');
 
 const userSchema = mongoose.Schema({
   email: {
@@ -40,6 +42,7 @@ const userSchema = mongoose.Schema({
   ],
 });
 
+// doc methods
 // add jwt to the user object
 userSchema.methods.addJWT = function () {
   const { _id } = this;
@@ -58,15 +61,15 @@ userSchema.methods.toJSON = function () {
   return { _id, email };
 };
 
+// model method
 userSchema.statics.findByToken = function (token) {
   const access = 'auth';
 
   // verify jwt
   return jwt.verify(token, jwtSecret, (err, decoded) => {
     if (err) {
-      const cErr = err; // to avoid param reassign eslint warning
-      cErr.message = `jtw.verify: ${cErr.message}`;
-      return Promise.reject(cErr);
+      ((e) => { e.message = `jtw.verify: ${e.message}`; })(err);
+      return Promise.reject(err);
     }
     // lookup user in db via id, token and access in jwt payload
     return this.findOne({
@@ -75,5 +78,15 @@ userSchema.statics.findByToken = function (token) {
     });
   });
 };
+
+// doc middleware - presave hook - password hash
+userSchema.pre('save', async function () {
+  // don't hash an already hashed password
+  if (!this.isNew) return;
+  const pGenSalt = promisify(bcrypt.genSalt);
+  const pHash = promisify(bcrypt.hash);
+  const salt = await pGenSalt(genSaltRounds);
+  this.password = await pHash(this.password, salt);
+});
 
 exports.User = mongoose.model('User', userSchema);
