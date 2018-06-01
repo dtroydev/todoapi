@@ -6,9 +6,11 @@ const debug = require('debug')('express');
 
 // check environment, if unrecognised, exit
 require('./config/config').checkEnv();
+// connect to mongo db
+require('./db/mongoose');
 
 const express = require('express');
-const { ObjectID } = require('./db/mongoose');
+const { ObjectID } = require('mongodb');
 const { Todo } = require('./models/todo');
 const { User } = require('./models/user');
 const { authenticate } = require('./middleware/authenticate');
@@ -114,6 +116,4 @@ const server = app.listen(port, () => {
   debug(`Express server is up on ${port}`);
 });
 
-exports.app = app;
-exports.server = server;
-// exports.env = env;
+module.exports = { app, server };

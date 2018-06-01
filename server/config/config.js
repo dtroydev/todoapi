@@ -27,6 +27,4 @@ const checkEnv = () => {
   }
 };
 
-exports.checkEnv = checkEnv;
-exports.jwtSecret = jwtSecret;
-exports.genSaltRounds = genSaltRounds;
+module.exports = { checkEnv, jwtSecret, genSaltRounds };

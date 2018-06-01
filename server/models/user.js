@@ -7,7 +7,6 @@ const mongoose = require('mongoose');
 const { isEmail } = require('validator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { promisify } = require('util');
 const { jwtSecret, genSaltRounds } = require('../config/config');
 
 const userSchema = mongoose.Schema({
@@ -15,7 +14,6 @@ const userSchema = mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    minlength: 6,
     unique: true,
     validate: {
       validator: isEmail,
@@ -68,6 +66,7 @@ userSchema.statics.findByToken = function (token) {
   // verify jwt
   return jwt.verify(token, jwtSecret, (err, decoded) => {
     if (err) {
+      // IIFE to bypass eslint param reassign warning
       ((e) => { e.message = `jtw.verify: ${e.message}`; })(err);
       return Promise.reject(err);
     }
@@ -80,13 +79,11 @@ userSchema.statics.findByToken = function (token) {
 };
 
 // doc middleware - presave hook - password hash
-userSchema.pre('save', async function () {
+userSchema.pre('save', function () {
   // don't hash an already hashed password
   if (!this.isNew) return;
-  const pGenSalt = promisify(bcrypt.genSalt);
-  const pHash = promisify(bcrypt.hash);
-  const salt = await pGenSalt(genSaltRounds);
-  this.password = await pHash(this.password, salt);
+  const salt = bcrypt.genSaltSync(genSaltRounds);
+  this.password = bcrypt.hashSync(this.password, salt);
 });
 
 exports.User = mongoose.model('User', userSchema);

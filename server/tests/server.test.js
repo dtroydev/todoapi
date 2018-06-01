@@ -8,26 +8,28 @@ const debug = require('debug')('express');
 const { app, server } = require('../server');
 const { errors } = require('../middleware/errors');
 const { Todo } = require('../models/todo');
-const { ObjectID, db, errorsMongoose } = require('../db/mongoose');
-
-// test data
-const testTodos = [
-  { _id: new ObjectID(), text: 'mocha testing todo #1' },
-  { _id: new ObjectID(), text: 'mocha testing todo #2' },
-];
+const { User } = require('../models/user');
+const { db, errorsMongoose } = require('../db/mongoose');
+const { ObjectID } = require('mongodb');
+const bcrypt = require('bcryptjs');
+const { promisify } = require('util');
+const jwt = require('jsonwebtoken');
+const { jwtSecret } = require('../config/config');
+const {
+  waitForMongoServer,
+  testTodos,
+  testUsers,
+  testToken,
+  populateTodos,
+  populateUsers,
+} = require('./seed/seed');
 
 // wait until connection is ready before testing
-before((done) => {
-  db.on('connected', done);
-});
-
+before(waitForMongoServer);
+before(populateUsers); // once user patch and delete tests are added swap to beforeEach
 // populate with test data
-beforeEach((done) => {
-  Todo.deleteMany()
-    .then(() => Todo.insertMany(testTodos))
-    .then(() => done())
-    .catch(done);
-});
+beforeEach(populateTodos);
+// beforeEach(populateUsers);
 
 describe('Test Suite: Error Handlers', () => {
   it('Express Middleware should return 500 status code', () => {
@@ -305,6 +307,170 @@ describe('Test Suite: PATCH /todos/:id', () => {
       .patch(`/todos/${_id}`)
       .send({ text, random: 'random' })
       .expect(400)
+      .end(done);
+  });
+});
+
+describe('Test Suite: POST /users', () => {
+  it('should create a new user', (done) => {
+    const user = { email: 'sample@example.com', password: 'samplePass' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(200)
+      .then(async (res) => {
+        const { _id, email } = res.body;
+        expect(ObjectID.isValid(_id)).toBe(true);
+        expect(email).toBe(user.email);
+        expect(Object.keys(res.body).length).toBe(2);
+        const token = res.header.authorization.slice(7); // remove 'Bearer '
+        const rpayload = await promisify(jwt.verify)(token, jwtSecret);
+        const payload = { _id, access: 'auth', iat: rpayload.iat };
+        expect(rpayload).toEqual(payload);
+        return { _id, token };
+      })
+      .then(({ _id: rid, token: rtoken }) =>
+      // the User.find promise needs to be the return value of this then handler
+        User.find({ email: user.email })
+          .then(async (users) => {
+            expect(users.length).toBe(1);
+            const [{
+              _id, email, password: hash, tokens: [{ access, token }],
+            }] = users;
+            expect(`${_id}`).toBe(rid);
+            expect(email).toBe(user.email);
+            expect(bcrypt.compareSync(user.password, hash)).toBe(true);
+            expect(access).toBe('auth');
+            expect(token).toBe(rtoken);
+          }))
+      .then(() => done())
+      .catch(done);
+  });
+
+  it('should return 400 if missing required user fields', (done) => {
+    const user = { email: 'sample@example.com' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if unknown user fields are supplied', (done) => {
+    const user = { email: 'sample@example.com', password: 'samplePass', random: 'random' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if password is too short', (done) => {
+    const user = { email: 'sample@example.com', password: '123' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if email is in use', (done) => {
+    const { email } = testUsers[0];
+    const user = { email, password: '123456' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if email is invalid', (done) => {
+    const user = { email: 'abc', password: '123456' };
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should not hash a hash if save is done more than once', async () => {
+    const user = new User({ email: 'sample2@example.com', password: 'samplePass' });
+    const { password: hash1 } = await user.save();
+    const { password: hash2 } = await user.save();
+    expect(hash1).toBe(hash2);
+  });
+});
+
+describe('Test Suite: GET /users/me', () => {
+  it('should return user id and email if valid token is supplied', (done) => {
+    const { _id, email, tokens: [{ token }] } = testUsers[0];
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body._id).toBe(`${_id}`);
+        expect(res.body.email).toBe(email);
+        expect(Object.keys(res.body).length).toBe(2);
+      })
+      .end(done);
+  });
+
+  it('should return 400 if token is not supplied', (done) => {
+    request(app)
+      .get('/users/me')
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token has invalid format {missing dots}', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${testToken.replace('.', '')}`)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token has invalid format {missing "Bearer " prefix}', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `${testToken}`)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token has invalid format {invalid chars}', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ^${testToken.slice(1)}`)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token has invalid format {missing a character}', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${testToken.slice(1)}`)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token has invalid signature', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${testToken.slice(0, -1)}`)
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 404 if token is valid but not found', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${testToken}`)
+      .expect(404)
+      .expect((res) => {
+        expect(res.body).toEqual({});
+      })
       .end(done);
   });
 });

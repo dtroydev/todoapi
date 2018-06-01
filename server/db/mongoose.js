@@ -2,7 +2,6 @@
 
 const debug = require('debug')('mongodb');
 const mongoose = require('mongoose');
-exports.ObjectID = require('mongodb').ObjectID;
 
 const errorHandler = prefix => (err) => {
   debug(`${prefix} ${err}`.red);
@@ -24,5 +23,4 @@ db.on('connected', () => {
 
 db.on('error', errorHandler('db error event'));
 
-exports.db = db;
-exports.errorsMongoose = errorHandler;
+module.exports = { db, errorsMongoose: errorHandler };
