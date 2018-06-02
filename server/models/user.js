@@ -78,6 +78,15 @@ userSchema.statics.findByToken = function (token) {
   });
 };
 
+// check login
+userSchema.statics.findByCredentials = function (email, password) {
+  return this.findOne({ email }).then((user) => {
+    if (!user) throw new Error('No Such User');
+    if (!bcrypt.compareSync(password, user.password)) throw new Error('Wrong Password');
+    return user;
+  });
+};
+
 // doc middleware - presave hook - password hash
 userSchema.pre('save', function () {
   // don't hash an already hashed password

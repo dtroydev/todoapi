@@ -25,7 +25,7 @@ const validator = (req, res, schema, validFields) => {
   const fields = Object.keys(doc);
 
   // returns true if valid
-  return !(fields.some(testInvalid) || fields.length === 0);
+  return (!fields.some(testInvalid) && fields.length !== 0);
 };
 
 exports.validator = validator;

@@ -8,7 +8,6 @@ const debug = require('debug')('express');
 require('./config/config').checkEnv();
 // connect to mongo db
 require('./db/mongoose');
-
 const express = require('express');
 const { ObjectID } = require('mongodb');
 const { Todo } = require('./models/todo');
@@ -105,7 +104,31 @@ app.post('/users', (req, res) => {
   }, errors.mongoHandler.bind(res, 'user.save'));
 });
 
-// get me Route
+// user login
+app.post('/users/login', (req, res) => {
+  debug(`Received ${req.method}`, req.url, req.body);
+
+  if (!validator(req, res, User.schema, ['email', 'password'])) return res.status(400).send('empty body / invalid fields');
+
+  const { email, password } = req.body;
+  if (Object.keys(req.body).length !== 2 || !email || !password) return res.status(400).send('missing/empty email/password field(s)');
+  let token;
+  return User.findByCredentials(email, password)
+    .then((user) => {
+      // const { tokens: [{ token }] } = user;
+      token = user.addJWT();
+      return user.save();
+    })
+    .then((user) => {
+      res.header('Authorization', `Bearer ${token}`).send(user);
+    })
+    .catch((err) => {
+      if (err.name === 'MongoError') errors.mongoHandler.bind(res, 'user.save')(err);
+      else res.status(400).send(err.message);
+    });
+});
+
+// get users/me Route
 app.get('/users/me', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
 
