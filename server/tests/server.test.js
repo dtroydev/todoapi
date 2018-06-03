@@ -2,8 +2,10 @@
 
 'use strict';
 
+require('colors');
 const request = require('supertest');
 const expect = require('expect');
+const sinon = require('sinon');
 const debug = require('debug')('express');
 const { app, server } = require('../server');
 const { errors } = require('../middleware/errors');
@@ -31,7 +33,7 @@ before(populateUsers); // once user patch and delete tests are added swap to bef
 beforeEach(populateTodos);
 // beforeEach(populateUsers);
 
-describe('Test Suite: Error Handlers', () => {
+describe('Test Suite: Error Handlers'.black.bgWhite, () => {
   it('Express Middleware should return 500 status code', () => {
     const req = {};
     const res = {
@@ -73,7 +75,7 @@ describe('Test Suite: Error Handlers', () => {
   });
 });
 
-describe('Test Suite: POST /todos', () => {
+describe('Test Suite: POST /todos'.black.bgWhite, () => {
   it('should create a new todo', (done) => {
     const text = 'lorem ipsum blah blah';
     request(app)
@@ -117,7 +119,7 @@ describe('Test Suite: POST /todos', () => {
   });
 });
 
-describe('Test Suite: GET /todos', () => {
+describe('Test Suite: GET /todos'.black.bgWhite, () => {
   it('should return all todos', (done) => {
     request(app)
       .get('/todos')
@@ -127,7 +129,7 @@ describe('Test Suite: GET /todos', () => {
   });
 });
 
-describe('Test Suite: GET /todos/:id', () => {
+describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
   it('should return a single todo', (done) => {
     const { _id, text } = testTodos[0];
     request(app)
@@ -155,7 +157,7 @@ describe('Test Suite: GET /todos/:id', () => {
   });
 });
 
-describe('Test Suite: DELETE /todos/:id', () => {
+describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
   it('should delete a single todo', (done) => {
     const { _id, text } = testTodos[0];
     request(app)
@@ -192,7 +194,7 @@ describe('Test Suite: DELETE /todos/:id', () => {
   });
 });
 
-describe('Test Suite: PATCH /todos/:id', () => {
+describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   const text = 'patched text';
   const { _id } = testTodos[0];
 
@@ -311,7 +313,7 @@ describe('Test Suite: PATCH /todos/:id', () => {
   });
 });
 
-describe('Test Suite: POST /users', () => {
+describe('Test Suite: POST /users'.black.bgWhite, () => {
   it('should create a new user', (done) => {
     const user = { email: 'sample@example.com', password: 'samplePass' };
     request(app)
@@ -401,7 +403,7 @@ describe('Test Suite: POST /users', () => {
   });
 });
 
-describe('Test Suite: GET /users/me', () => {
+describe('Test Suite: GET /users/me'.black.bgWhite, () => {
   it('should return user id and email if valid token is supplied', (done) => {
     const { _id, email, tokens: [{ token }] } = testUsers[0];
     request(app)
@@ -472,6 +474,112 @@ describe('Test Suite: GET /users/me', () => {
         expect(res.body).toEqual({});
       })
       .end(done);
+  });
+});
+
+describe('Test Suite: POST /users/login'.black.bgWhite, () => {
+  const { email: loginEmail, password: loginPassword } = testUsers[0];
+
+  it('should login a new user', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail, password: loginPassword })
+      .expect(200)
+      .then(async (res) => {
+        const { _id: responseId, email: responseEmail } = res.body;
+        expect(ObjectID.isValid(responseId)).toBe(true);
+        expect(responseEmail).toBe(loginEmail);
+        expect(Object.keys(res.body).length).toBe(2);
+        const responseToken = res.header.authorization.slice(7); // remove 'Bearer '
+        const responsePayload = await promisify(jwt.verify)(responseToken, jwtSecret);
+        const expectedPayload = { _id: responseId, access: 'auth', iat: responsePayload.iat };
+        expect(responsePayload).toEqual(expectedPayload);
+        return { responseToken, responseId };
+      })
+      .then(({ responseToken, responseId }) =>
+        User.findByToken(responseToken)
+          .then((user) => {
+            const { _id } = user;
+            expect(`${_id}`).toBe(responseId);
+          }))
+      .then(() => done())
+      .catch(done);
+  });
+
+  it('should not login a new user with wrong password', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail, password: `${loginPassword}blah` })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .then(() => done())
+      .catch(done);
+  });
+
+  it('should not login an unknown user', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({ email: 'someuser@example.com', password: '123456' })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .then(() => done())
+      .catch(done);
+  });
+
+  it('should return 400 if missing required user fields', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end(done);
+  });
+
+  it('should return 400 if unknown user fields are supplied', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail, password: loginPassword, random: 'random' })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end(done);
+  });
+
+  it('should return 400 if email is invalid', (done) => {
+    const user = { email: 'abc', password: '123456' };
+    request(app)
+      .post('/users/login')
+      .send(user)
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end(done);
+  });
+
+  it('should return 400 if mongoose error occurs at findByCredentials', (done) => {
+    const stub = sinon.stub(User, 'findByCredentials').rejects('MongoError', 'findByCredentials Stub Error');
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail, password: loginPassword })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end((err) => {
+        if (err) return done(err);
+        stub.restore();
+        return done();
+      });
+  });
+
+  it('should return 400 if mongoose error occurs at findOne', (done) => {
+    const stub = sinon.stub(User, 'findOne').rejects('MongoError', 'findOne Stub Error');
+    request(app)
+      .post('/users/login')
+      .send({ email: loginEmail, password: loginPassword })
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end((err) => {
+        if (err) return done(err);
+        stub.restore();
+        return done();
+      });
   });
 });
 

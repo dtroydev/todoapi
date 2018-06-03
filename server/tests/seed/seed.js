@@ -44,13 +44,6 @@ const testUsers = (() => {
 // wait until connection is ready before testing
 const waitForMongoServer = done => db.on('connected', done);
 
-// populate with test data
-// const populateTodos = (done) => {
-//   Todo.deleteMany().then(() => Todo.insertMany(testTodos))
-//     .then(() => done())
-//     .catch(done);
-// };
-
 // version that returns a promise rather than using the done callback
 const populateTodos = () => Todo.deleteMany().then(() => Todo.insertMany(testTodos));
 // create instead of insertMany to let the pre-save hook run (which hashes pwds)

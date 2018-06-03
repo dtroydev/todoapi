@@ -115,7 +115,6 @@ app.post('/users/login', (req, res) => {
   let token;
   return User.findByCredentials(email, password)
     .then((user) => {
-      // const { tokens: [{ token }] } = user;
       token = user.addJWT();
       return user.save();
     })
@@ -123,8 +122,8 @@ app.post('/users/login', (req, res) => {
       res.header('Authorization', `Bearer ${token}`).send(user);
     })
     .catch((err) => {
-      if (err.name === 'MongoError') errors.mongoHandler.bind(res, 'user.save')(err);
-      else res.status(400).send(err.message);
+      if (err.name === 'MongoError') return errors.mongoHandler.bind(res, 'user.findByCredentials')(err);
+      return res.status(400).send(err.message);
     });
 });
 
