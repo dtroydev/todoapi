@@ -1,3 +1,5 @@
+/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
+
 'use strict';
 
 require('colors');
@@ -127,11 +129,30 @@ app.post('/users/login', (req, res) => {
     });
 });
 
+// user login
+app.delete('/users/me/token', authenticate, (req, res) => {
+  debug(`Received ${req.method}`, req.url, req.body);
+
+  if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
+
+  const { user, token, error } = res.locals;
+
+  if (error) return res.status(400).send(error);
+
+  return user.removeJWT(token)
+    .then(() => user.save())
+    .then(() => res.send('ok. token removed. user updated'))
+    .catch((err) => {
+      if (err.name === 'MongoError') return errors.mongoHandler.bind(res, 'users/logout')(err);
+      return res.status(400).send(err.message);
+    });
+});
+
 // get users/me Route
 app.get('/users/me', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
-
-  res.send(res.locals.user);
+  if (res.locals.error) return res.status(400).send(res.locals.error);
+  return res.send(res.locals.user);
 });
 
 const server = app.listen(port, () => {

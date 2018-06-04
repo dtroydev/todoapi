@@ -3,6 +3,7 @@
 
 'use strict';
 
+const debug = require('debug')('user');
 const mongoose = require('mongoose');
 const { isEmail } = require('validator');
 const jwt = require('jsonwebtoken');
@@ -51,6 +52,18 @@ userSchema.methods.addJWT = function () {
   const token = jwt.sign(payload, jwtSecret);
   this.tokens.push({ access, token });
   return token;
+};
+
+// remove jwt from the user object
+userSchema.methods.removeJWT = function (token) {
+  return this.update({ $pull: { tokens: { token } } })
+    .then(({ nModified }) => {
+      debug(`Removed ${nModified} token(s) (note: should be 1!)`);
+      if (nModified === 0) {
+        debug('Token removal failed');
+        throw new Error('Token removal failed');
+      }
+    });
 };
 
 // override toJSON to send minimum data in json response

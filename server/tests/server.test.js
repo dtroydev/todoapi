@@ -28,10 +28,10 @@ const {
 
 // wait until connection is ready before testing
 before(waitForMongoServer);
-before(populateUsers); // once user patch and delete tests are added swap to beforeEach
+// before(populateUsers); // once user patch and delete tests are added swap to beforeEach
 // populate with test data
 beforeEach(populateTodos);
-// beforeEach(populateUsers);
+beforeEach(populateUsers);
 
 describe('Test Suite: Error Handlers'.black.bgWhite, () => {
   it('Express Middleware should return 500 status code', () => {
@@ -469,7 +469,7 @@ describe('Test Suite: GET /users/me'.black.bgWhite, () => {
     request(app)
       .get('/users/me')
       .set('Authorization', `Bearer ${testToken}`)
-      .expect(404)
+      .expect(400)
       .expect((res) => {
         expect(res.body).toEqual({});
       })
@@ -507,11 +507,16 @@ describe('Test Suite: POST /users/login'.black.bgWhite, () => {
   });
 
   it('should not login a new user with wrong password', (done) => {
+    const { _id, email: _loginEmail, password: _loginPassword } = testUsers[1];
     request(app)
       .post('/users/login')
-      .send({ email: loginEmail, password: `${loginPassword}blah` })
+      .send({ email: _loginEmail, password: `${_loginPassword}blah` })
       .expect(400)
       .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .then(() =>
+        User.findById({ _id }).then((user) => {
+          expect(user.tokens).toHaveLength(0);
+        }))
       .then(() => done())
       .catch(done);
   });
