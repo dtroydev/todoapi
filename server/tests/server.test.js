@@ -127,6 +127,13 @@ describe('Test Suite: GET /todos'.black.bgWhite, () => {
       .expect(res => expect(res.body.todos.length).toBe(testTodos.length))
       .end(done);
   });
+  it('should not return todos if body data is present', (done) => {
+    request(app)
+      .get('/todos')
+      .send({ random: 'random' })
+      .expect(400)
+      .end(done);
+  });
 });
 
 describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
@@ -585,6 +592,40 @@ describe('Test Suite: POST /users/login'.black.bgWhite, () => {
         stub.restore();
         return done();
       });
+  });
+});
+
+describe('Test Suite: DELETE /users/me/token'.black.bgWhite, () => {
+  const { tokens: [{ token }] } = testUsers[0];
+
+  it('should logout a user with valid token', (done) => {
+    request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${token}`)
+      .send()
+      .expect(200)
+      .then(() => User.findByToken(token)
+        .then(user => expect(user).toBeNull()))
+      .then(() => done())
+      .catch(done);
+  });
+
+  it('should return 400 for user with valid token with unexpected body data', (done) => {
+    request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ random: 'random' })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should return 400 if token does not exist', (done) => {
+    request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send()
+      .expect(400)
+      .end(done);
   });
 });
 

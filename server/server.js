@@ -38,7 +38,10 @@ app.post('/todos', (req, res) => {
 // all todos listing
 app.get('/todos', (req, res) => {
   debug(`Received ${req.method}`, req.url);
-  Todo.find().then(todos => res.send({ todos }), errors.mongoHandler.bind(res, 'Todo.find'));
+
+  if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
+
+  return Todo.find().then(todos => res.send({ todos }), errors.mongoHandler.bind(res, 'Todo.find'));
 });
 
 // single todo listing
@@ -151,8 +154,10 @@ app.delete('/users/me/token', authenticate, (req, res) => {
 // get users/me Route
 app.get('/users/me', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
-  if (res.locals.error) return res.status(400).send(res.locals.error);
-  return res.send(res.locals.user);
+  const { user, error } = res.locals;
+  if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
+  if (error) return res.status(400).send(error);
+  return res.send(user);
 });
 
 const server = app.listen(port, () => {
