@@ -9,10 +9,21 @@ const { ObjectID } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const { jwtSecret } = require('../../config/config');
 
+const userOneId = new ObjectID();
+const userTwoId = new ObjectID();
+
 // test data
 const testTodos = [
-  { _id: new ObjectID(), text: 'mocha testing todo #1' },
-  { _id: new ObjectID(), text: 'mocha testing todo #2' },
+  {
+    _id: new ObjectID(),
+    text: 'mocha testing todo #1',
+    _creator: userOneId,
+  },
+  {
+    _id: new ObjectID(),
+    text: 'mocha testing todo #2',
+    _creator: userTwoId,
+  },
 ];
 
 const testToken = (() => {
@@ -21,20 +32,19 @@ const testToken = (() => {
 })();
 
 const testUsers = (() => {
-  const _id = new ObjectID();
   const access = 'auth';
-  const token = jwt.sign({ _id, access }, jwtSecret);
+  const token = jwt.sign({ _id: userOneId, access }, jwtSecret);
   const tokens = [{ access, token }];
 
   return [
     {
-      _id,
+      _id: userOneId,
       email: 'bob@example.org',
       password: 'userOnePass',
       tokens,
     },
     {
-      _id: new ObjectID(),
+      _id: userTwoId,
       email: 'jane@example.org',
       password: 'userTwoPass',
     },

@@ -1,4 +1,4 @@
-/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
+/* eslint no-underscore-dangle: [ "error", { "allow": [ "_id", "_creator" ] } ] */
 
 'use strict';
 
@@ -27,21 +27,31 @@ app.use(express.json());
 app.use(errors.expressHandler);
 
 // todo addition
-app.post('/todos', (req, res) => {
+app.post('/todos', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
 
-  if (!validator(req, res, Todo.schema, ['text', 'completed'])) return res.status(400).send();
+  const { error, user, token } = res.locals;
+  if (error) return res.status(400).send(error);
+
+  if (!validator(req, res, Todo.schema, ['text', 'completed'])) return res.status(400).send('empty body / invalid fields');
+
+  req.body._creator = user._id;
   const todo = new Todo(req.body);
-  return todo.save().then(doc => res.send(doc), errors.mongoHandler.bind(res, 'todo.save'));
+
+  return todo.save().then(doc => res.header('Authorization', `Bearer ${token}`).send(doc), errors.mongoHandler.bind(res, 'todo.save'));
 });
 
 // all todos listing
-app.get('/todos', (req, res) => {
+app.get('/todos', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url);
+
+  const { error, user, token } = res.locals;
+  if (error) return res.status(400).send(error);
 
   if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
 
-  return Todo.find().then(todos => res.send({ todos }), errors.mongoHandler.bind(res, 'Todo.find'));
+  return Todo.find({ _creator: user._id })
+    .then(todos => res.header('Authorization', `Bearer ${token}`).send({ todos }), errors.mongoHandler.bind(res, 'Todo.find'));
 });
 
 // single todo listing
@@ -154,10 +164,10 @@ app.delete('/users/me/token', authenticate, (req, res) => {
 // get users/me Route
 app.get('/users/me', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
-  const { user, error } = res.locals;
+  const { user, token, error } = res.locals;
   if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
   if (error) return res.status(400).send(error);
-  return res.send(user);
+  return res.header('Authorization', `Bearer ${token}`).send(user);
 });
 
 const server = app.listen(port, () => {

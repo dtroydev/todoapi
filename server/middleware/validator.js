@@ -1,5 +1,7 @@
 'use strict';
 
+const debug = require('debug')('validator');
+
 const validator = (req, res, schema, validFields) => {
   // shorthand
   const { body: doc } = req;
@@ -14,10 +16,8 @@ const validator = (req, res, schema, validFields) => {
     // match something in => [object something]
     const objTypeRe = /\w+(?=])/;
     const docType = Object.prototype.toString.call(doc[f]).match(objTypeRe)[0];
-
     // get correct type
     const fieldType = schema.path(f).instance;
-
     // check if identical
     return docType !== fieldType;
   };
@@ -25,7 +25,9 @@ const validator = (req, res, schema, validFields) => {
   const fields = Object.keys(doc);
 
   // returns true if valid
-  return (!fields.some(testInvalid) && fields.length !== 0);
+  const result = (!fields.some(testInvalid) && fields.length !== 0);
+  if (!result) debug('empty body or invalid fields');
+  return result;
 };
 
 exports.validator = validator;

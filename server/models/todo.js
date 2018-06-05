@@ -17,6 +17,10 @@ const todoSchema = mongoose.Schema({
     type: Number,
     default: null,
   },
+  _creator: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+  },
 });
 
 exports.Todo = mongoose.model('Todo', todoSchema);

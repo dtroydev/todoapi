@@ -1,4 +1,4 @@
-/* eslint no-underscore-dangle: ["error", { "allow": ["_id"] }] */
+/* eslint no-underscore-dangle: [ "error", { "allow": [ "_id", "_creator" ] } ] */
 
 'use strict';
 
@@ -76,14 +76,17 @@ describe('Test Suite: Error Handlers'.black.bgWhite, () => {
 });
 
 describe('Test Suite: POST /todos'.black.bgWhite, () => {
+  const { _id, tokens: [{ token }] } = testUsers[0];
+  const text = 'lorem ipsum blah blah';
   it('should create a new todo', (done) => {
-    const text = 'lorem ipsum blah blah';
     request(app)
       .post('/todos')
+      .set('Authorization', `Bearer ${token}`)
       .send({ text })
       .expect(200)
       .expect((res) => {
         expect(res.body.text).toBe(text);
+        expect(res.header.authorization.slice(7)).toBe(token);
       })
       .end((err) => {
         if (err) done(err);
@@ -93,6 +96,7 @@ describe('Test Suite: POST /todos'.black.bgWhite, () => {
               // console.log(todos);
               expect(todos.length).toBe(1);
               expect(todos[0].text).toBe(text);
+              expect(todos[0]._creator).toEqual(_id);
               done();
             })
             .catch(done);
@@ -100,10 +104,29 @@ describe('Test Suite: POST /todos'.black.bgWhite, () => {
       });
   });
 
-  it('should not create a new todo', (done) => {
+  it('should not create a new todo missing content', (done) => {
     request(app)
       .post('/todos')
+      .set('Authorization', `Bearer ${token}`)
       .send({ })
+      .expect(400)
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.find()
+            .then((todos) => {
+              expect(todos.length).toBe(testTodos.length);
+              done();
+            })
+            .catch(done);
+        }
+      });
+  });
+
+  it('should not create a new todo missing token', (done) => {
+    request(app)
+      .post('/todos')
+      .send({ text })
       .expect(400)
       .end((err) => {
         if (err) done(err);
@@ -120,17 +143,36 @@ describe('Test Suite: POST /todos'.black.bgWhite, () => {
 });
 
 describe('Test Suite: GET /todos'.black.bgWhite, () => {
-  it('should return all todos', (done) => {
+  const { _id, tokens: [{ token }] } = testUsers[0];
+  it('should return todos with valid token that belong to user', (done) => {
     request(app)
       .get('/todos')
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
-      .expect(res => expect(res.body.todos.length).toBe(testTodos.length))
-      .end(done);
+      .end((err, res) => {
+        if (err) return done(err);
+        return Todo.find({ _creator: _id })
+          .then((todos) => {
+            expect(JSON.stringify(res.body.todos)).toEqual(JSON.stringify(todos));
+            expect(res.header.authorization.slice(7)).toBe(token);
+            done();
+          })
+          .catch(done);
+      });
   });
+
   it('should not return todos if body data is present', (done) => {
     request(app)
       .get('/todos')
+      .set('Authorization', `Bearer ${token}`)
       .send({ random: 'random' })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should not return todos without token', (done) => {
+    request(app)
+      .get('/todos')
       .expect(400)
       .end(done);
   });
@@ -421,7 +463,18 @@ describe('Test Suite: GET /users/me'.black.bgWhite, () => {
         expect(res.body._id).toBe(`${_id}`);
         expect(res.body.email).toBe(email);
         expect(Object.keys(res.body).length).toBe(2);
+        expect(res.header.authorization.slice(7)).toBe(token);
       })
+      .end(done);
+  });
+
+  it('should return 400 if there is unexpected data in body', (done) => {
+    const { tokens: [{ token }] } = testUsers[0];
+    request(app)
+      .get('/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ random: 'random' })
+      .expect(400)
       .end(done);
   });
 
@@ -626,6 +679,48 @@ describe('Test Suite: DELETE /users/me/token'.black.bgWhite, () => {
       .send()
       .expect(400)
       .end(done);
+  });
+
+  it('should return 400 if mongoose error occurs at removeJWT', (done) => {
+    const stub = sinon.stub(User.prototype, 'removeJWT').rejects('MongoError', 'removeJWT Stub Error');
+    request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end((err) => {
+        if (err) return done(err);
+        stub.restore();
+        return done();
+      });
+  });
+
+  it('should return 400 if mongoose error occurs at update', (done) => {
+    const stub = sinon.stub(User, 'update').rejects('MongoError', 'update Stub Error');
+    request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .end((err) => {
+        if (err) return done(err);
+        stub.restore();
+        return done();
+      });
+  });
+
+  it('should return 400 if somehow removeJWT got an invalid token', async () => {
+    const user = await User.findById(testUsers[0]);
+    const removeJWTbound = User.prototype.removeJWT.bind(user, testToken);
+    const stub = sinon.stub(User.prototype, 'removeJWT').callsFake(removeJWTbound);
+    return request(app)
+      .delete('/users/me/token')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(400)
+      .expect(res => expect(res.headers.authorization).toBeUndefined())
+      .then(() => {
+        stub.restore();
+      });
   });
 });
 
