@@ -179,21 +179,35 @@ describe('Test Suite: GET /todos'.black.bgWhite, () => {
 });
 
 describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
+  const { _id: _uid, tokens: [{ token }] } = testUsers[0];
+  const { tokens: [{ token: tokenUserTwo }] } = testUsers[1];
   it('should return a single todo', (done) => {
     const { _id, text } = testTodos[0];
     request(app)
       .get(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo._id).toBe(`${_id}`);
         expect(res.body.todo.text).toBe(text);
+        expect(res.body.todo._creator).toBe(`${_uid}`);
       })
+      .end(done);
+  });
+
+  it('should not return a single todo created by a different user', (done) => {
+    const { _id } = testTodos[0];
+    request(app)
+      .get(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${tokenUserTwo}`)
+      .expect(404)
       .end(done);
   });
 
   it('should return 404 if todo id is not found', (done) => {
     request(app)
       .get(`/todos/${ObjectID()}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(404)
       .end(done);
   });
@@ -207,14 +221,17 @@ describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
 });
 
 describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
+  const { _id } = testTodos[0];
+  const { tokens: [{ token }] } = testUsers[0];
+  const { tokens: [{ token: tokenUserTwo }] } = testUsers[1];
+
   it('should delete a single todo', (done) => {
-    const { _id, text } = testTodos[0];
     request(app)
       .delete(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.todo._id).toBe(`${_id}`);
-        expect(res.body.todo.text).toBe(text);
+        expect(res.body.n).toBe(1);
       })
       .end((err) => {
         if (err) done(err);
@@ -228,11 +245,39 @@ describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
       });
   });
 
-  it('should return 404 if todo id is not found', (done) => {
+  it('should not delete a single todo created by a different user', (done) => {
     request(app)
-      .delete(`/todos/${ObjectID()}`)
+      .delete(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${tokenUserTwo}`)
       .expect(404)
-      .end(done);
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(_id).then((todo) => {
+            expect(todo).toBeTruthy();
+            done();
+          })
+            .catch(done);
+        }
+      });
+  });
+
+  it('should return 404 if todo id is not found', (done) => {
+    const randomId = new ObjectID();
+    request(app)
+      .delete(`/todos/${randomId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404)
+      .end((err) => {
+        if (err) done(err);
+        else {
+          Todo.findById(randomId).then((todo) => {
+            expect(todo).toBeNull();
+            done();
+          })
+            .catch(done);
+        }
+      });
   });
 
   it('should return 404 if todo id is invalid', (done) => {
@@ -246,15 +291,19 @@ describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
 describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   const text = 'patched text';
   const { _id } = testTodos[0];
+  const { _id: _uid, tokens: [{ token }] } = testUsers[0];
+  const { tokens: [{ token: tokenUserTwo }] } = testUsers[1];
 
   it('should update a single todo', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text })
       .expect(200)
       .expect((res) => {
         expect(res.body.todo._id).toBe(`${_id}`);
-        // expect(res.body.todo.text).toBe(text);
+        expect(res.body.todo._creator).toBe(`${_uid}`);
+        expect(res.body.todo.text).toBe(text);
       })
       .end((err) => {
         if (err) done(err);
@@ -268,13 +317,24 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
       });
   });
 
+  it('should not update a single todo created by a different user', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${tokenUserTwo}`)
+      .send({ text })
+      .expect(404)
+      .end(done);
+  });
+
   it('should set completedAt timestamp if complete is true', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text, completed: true })
       .expect(200)
       .expect((res) => {
         expect(res.body.todo._id).toBe(`${_id}`);
+        expect(res.body.todo._creator).toBe(`${_uid}`);
       })
       .end((err) => {
         if (err) done(err);
@@ -294,10 +354,12 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should set completedAt timestamp to be null if complete is false', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text, completed: false })
       .expect(200)
       .expect((res) => {
         expect(res.body.todo._id).toBe(`${_id}`);
+        expect(res.body.todo._creator).toBe(`${_uid}`);
       })
       .end((err) => {
         if (err) done(err);
@@ -324,6 +386,7 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should return 404 if todo id is not found', (done) => {
     request(app)
       .patch(`/todos/${ObjectID()}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text })
       .expect(404)
       .end(done);
@@ -575,7 +638,7 @@ describe('Test Suite: POST /users/login'.black.bgWhite, () => {
       .expect(res => expect(res.headers.authorization).toBeUndefined())
       .then(() =>
         User.findById({ _id }).then((user) => {
-          expect(user.tokens).toHaveLength(0);
+          expect(user.tokens).toHaveLength(1);
         }))
       .then(() => done())
       .catch(done);

@@ -35,6 +35,8 @@ const testUsers = (() => {
   const access = 'auth';
   const token = jwt.sign({ _id: userOneId, access }, jwtSecret);
   const tokens = [{ access, token }];
+  const tokenUserTwo = jwt.sign({ _id: userTwoId, access }, jwtSecret);
+  const tokensUserTwo = [{ access, token: tokenUserTwo }];
 
   return [
     {
@@ -47,6 +49,7 @@ const testUsers = (() => {
       _id: userTwoId,
       email: 'jane@example.org',
       password: 'userTwoPass',
+      tokens: tokensUserTwo,
     },
   ];
 })();

@@ -1,7 +1,8 @@
-/* eslint no-underscore-dangle: [ "error", { "allow": [ "_id", "_creator" ] } ] */
+/* eslint no-underscore-dangle: [ "error", { "allow": [ "_id", "_creator", "_doc" ] } ] */
 
 'use strict';
 
+// const Document = require('mongoose');
 require('colors');
 
 const debug = require('debug')('express');
@@ -55,14 +56,19 @@ app.get('/todos', authenticate, (req, res) => {
 });
 
 // single todo listing
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url);
 
-  const { id } = req.params;
+  const { id: _id } = req.params;
 
-  if (!ObjectID.isValid(id)) return res.status(404).send();
+  if (!ObjectID.isValid(_id)) return res.status(404).send();
 
-  return Todo.findById(id).then((todo) => {
+  const { error, user } = res.locals;
+  if (error) return res.status(400).send(error);
+
+  if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
+
+  return Todo.findOne({ _id, _creator: user._id }).then((todo) => {
     if (!todo) return res.status(404).send();
     return res.send({ todo });
   })
@@ -70,27 +76,35 @@ app.get('/todos/:id', (req, res) => {
 });
 
 // delete route
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url);
 
-  const { id } = req.params;
+  const { id: _id } = req.params;
 
-  if (!ObjectID.isValid(id)) return res.status(404).send();
+  if (!ObjectID.isValid(_id)) return res.status(404).send();
 
-  return Todo.findByIdAndRemove(id).then((todo) => {
-    if (!todo) return res.status(404).send();
-    return res.send({ todo });
+  const { error, user } = res.locals;
+  if (error) return res.status(400).send(error);
+
+  if (Object.keys(req.body).length !== 0) return res.status(400).send('unexpected body data');
+
+  return Todo.deleteOne({ _id, _creator: user._id }).then((result) => {
+    if (result.n === 0) return res.status(404).send();
+    return res.send(result);
   })
     .catch(errors.mongoHandler.bind(res, 'Todo.findByIdAndRemove'));
 });
 
 // update route
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate, (req, res) => {
   debug(`Received ${req.method}`, req.url, req.body);
 
   // check id validity
-  const { id } = req.params;
-  if (!ObjectID.isValid(id)) return res.status(404).send();
+  const { id: _id } = req.params;
+  if (!ObjectID.isValid(_id)) return res.status(404).send();
+
+  const { error, user } = res.locals;
+  if (error) return res.status(400).send(error);
 
   if (!validator(req, res, Todo.schema, ['text', 'completed'])) return res.status(400).send();
 
@@ -101,10 +115,11 @@ app.patch('/todos/:id', (req, res) => {
   if (doc.completed === true) doc.completedAt = Date.now();
   if (doc.completed === false) doc.completedAt = null;
 
-  return Todo.findByIdAndUpdate(id, doc).then((todo) => {
-    if (!todo) return res.status(404).send();
-    return res.send({ todo });
-  })
+  return Todo.findOneAndUpdate({ _id, _creator: user._id }, doc, { new: true })
+    .then((todo) => {
+      if (!todo) return res.status(404).send();
+      return res.send({ todo });
+    })
     .catch(errors.mongoHandler.bind(res, 'Todo.findByIdAndUpdate'));
 });
 
