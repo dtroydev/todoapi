@@ -502,6 +502,7 @@ describe('Test Suite: POST /users'.black.bgWhite, () => {
             }] = users;
             expect(`${_id}`).toBe(rid);
             expect(email).toBe(user.email);
+            expect(hash).not.toBe(user.password);
             expect(bcrypt.compareSync(user.password, hash)).toBe(true);
             expect(access).toBe('auth');
             expect(token).toBe(rtoken);
