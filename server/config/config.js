@@ -2,29 +2,30 @@
 
 require('colors');
 
-const env = process.env.NODE_ENV || 'development';
-const jwtSecret = 'abc123';
 const genSaltRounds = 10;
 
-console.log(`  Env: ${env}`.yellow);
+const acceptedEnvs = ['production', 'development', 'test'];
 
-const checkEnv = () => {
-  const localDevUri = 'mongodb://localhost:27017/TodoApp';
-  const localTestUri = 'mongodb://localhost:27017/TestTodoApp';
-  switch (env) {
-    case 'development':
-      process.env.MONGOURI = localDevUri;
-      break;
-    case 'test':
-      process.env.MONGOURI = process.env.MONGOLAB_TEST_URI || localTestUri;
-      break;
-    case 'production':
-      process.env.MONGOURI = process.env.MONGOLAB_URI;
-      break;
-    default:
-      console.log('Unrecognised NODE_ENV value, exiting...'.red);
-      process.exit();
-  }
-};
+const env = process.env.NODE_ENV || 'development';
 
-module.exports = { checkEnv, jwtSecret, genSaltRounds };
+if (!acceptedEnvs.includes(env)) {
+  console.log('Unrecognised NODE_ENV value, exiting...'.red);
+  process.exit();
+}
+
+const conf = process.env.HEROKU ? null : require('./config.json');
+
+if (!process.env.HEROKU) {
+  console.log(`  Env: ${env} - local`.yellow);
+  process.env.JWTSECRET = conf[env].JWTSECRET;
+  process.env.MONGOURI = conf[env].MONGOURI;
+  process.env.PORT = conf[env].PORT;
+} else {
+  console.log(`  Env: ${env} - heroku`.yellow);
+  if (env === 'production') process.env.MONGOURI = process.env.MONGOLAB_URI;
+  if (env === 'test') process.env.MONGOURI = process.env.MONGOLAB_TEST_URI;
+  // process.env.JWTSECRET has been configured on Heroku
+  // process.env.PORT will be dynamically set by Heroku
+}
+
+module.exports = { genSaltRounds };

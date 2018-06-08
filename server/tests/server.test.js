@@ -16,7 +16,9 @@ const { ObjectID } = require('mongodb');
 const bcrypt = require('bcryptjs');
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../config/config');
+
+const jwtSecret = process.env.JWTSECRET;
+
 const {
   waitForMongoServer,
   testTodos,
@@ -195,6 +197,14 @@ describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
       .end(done);
   });
 
+  it('should not return a todo without token', (done) => {
+    const { _id } = testTodos[0];
+    request(app)
+      .get(`/todos/${_id}`)
+      .expect(400)
+      .end(done);
+  });
+
   it('should not return a single todo created by a different user', (done) => {
     const { _id } = testTodos[0];
     request(app)
@@ -216,6 +226,17 @@ describe('Test Suite: GET /todos/:id'.black.bgWhite, () => {
     request(app)
       .get('/todos/123')
       .expect(404)
+      .end(done);
+  });
+
+  it('should return 400 if there is unexpected body', (done) => {
+    const { _id } = testTodos[0];
+
+    request(app)
+      .get(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ random: 'random' })
+      .expect(400)
       .end(done);
   });
 });
@@ -243,6 +264,13 @@ describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
             .catch(done);
         }
       });
+  });
+
+  it('should not delete a todo without token', (done) => {
+    request(app)
+      .delete(`/todos/${_id}`)
+      .expect(400)
+      .end(done);
   });
 
   it('should not delete a single todo created by a different user', (done) => {
@@ -286,6 +314,15 @@ describe('Test Suite: DELETE /todos/:id'.black.bgWhite, () => {
       .expect(404)
       .end(done);
   });
+
+  it('should return 400 if there is unexpected body', (done) => {
+    request(app)
+      .delete(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ random: 'random' })
+      .expect(400)
+      .end(done);
+  });
 });
 
 describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
@@ -315,6 +352,14 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
             .catch(done);
         }
       });
+  });
+
+  it('should not update a todo without token', (done) => {
+    request(app)
+      .patch(`/todos/${_id}`)
+      .send({ text })
+      .expect(400)
+      .end(done);
   });
 
   it('should not update a single todo created by a different user', (done) => {
@@ -395,6 +440,7 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should return 400 if field data type mismatch is supplied', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text: 123 })
       .expect(400)
       .end(done);
@@ -403,6 +449,7 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should return 400 if non-patch approved field is supplied', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text: 123, completedAt: Date.now() })
       .expect(400)
       .end(done);
@@ -411,6 +458,7 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should return 400 if empty todo is supplied', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ })
       .expect(400)
       .end(done);
@@ -419,6 +467,7 @@ describe('Test Suite: PATCH /todos/:id'.black.bgWhite, () => {
   it('should return 400 if unknown todo fields are supplied', (done) => {
     request(app)
       .patch(`/todos/${_id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text, random: 'random' })
       .expect(400)
       .end(done);

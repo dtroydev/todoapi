@@ -7,8 +7,9 @@ require('colors');
 
 const debug = require('debug')('express');
 
-// check environment, if unrecognised, exit
-require('./config/config').checkEnv();
+// environment / config
+require('./config/config');
+
 // connect to mongo db
 require('./db/mongoose');
 const express = require('express');
@@ -20,7 +21,8 @@ const { errors } = require('./middleware/errors');
 const { validator } = require('./middleware/validator');
 
 const app = express();
-const port = process.env.PORT || 3000;
+
+const port = process.env.PORT;
 
 app.use(express.json());
 

@@ -7,7 +7,8 @@ const { User } = require('../../models/user');
 const { db } = require('../../db/mongoose');
 const { ObjectID } = require('mongodb');
 const jwt = require('jsonwebtoken');
-const { jwtSecret } = require('../../config/config');
+
+const jwtSecret = process.env.JWTSECRET;
 
 const userOneId = new ObjectID();
 const userTwoId = new ObjectID();

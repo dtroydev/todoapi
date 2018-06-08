@@ -8,7 +8,9 @@ const mongoose = require('mongoose');
 const { isEmail } = require('validator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { jwtSecret, genSaltRounds } = require('../config/config');
+const { genSaltRounds } = require('../config/config');
+
+const jwtSecret = process.env.JWTSECRET;
 
 const userSchema = mongoose.Schema({
   email: {
