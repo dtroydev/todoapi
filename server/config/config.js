@@ -9,17 +9,16 @@ const acceptedEnvs = ['production', 'development', 'test'];
 const env = process.env.NODE_ENV || 'development';
 
 if (!acceptedEnvs.includes(env)) {
-  console.log('Unrecognised NODE_ENV value, exiting...'.red);
+  console.log('Error: Unrecognised NODE_ENV value -> '.red + `${env}`.yellow);
   process.exit();
 }
 
+// we rely on process.env.HEROKU to let us know if we are running there
 const conf = process.env.HEROKU ? null : require('./config.json');
 
 if (!process.env.HEROKU) {
   console.log(`  Env: ${env} - local`.yellow);
-  process.env.JWTSECRET = conf[env].JWTSECRET;
-  process.env.MONGOURI = conf[env].MONGOURI;
-  process.env.PORT = conf[env].PORT;
+  Object.keys(conf[env]).forEach((k) => { process.env[k] = conf[env][k]; });
 } else {
   console.log(`  Env: ${env} - heroku`.yellow);
   if (env === 'production') process.env.MONGOURI = process.env.MONGOLAB_URI;
